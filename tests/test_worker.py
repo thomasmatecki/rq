@@ -627,6 +627,21 @@ class TestWorker(RQTestCase):
         # Updates worker statuses
         self.assertEqual(worker.get_state(), 'busy')
         self.assertEqual(worker.get_current_job_id(), job.id)
+    
+    def test_job_execution_with_infinite_timeout(self):
+        """Test execution of jobs with infinite timeout"""
+        queue = Queue(connection=self.testconn)
+        queue.enqueue(say_hello, job_timeout=-1)
+        worker = Worker([queue])
+
+        self.assertEqual(len(queue.failed_job_registry), 0)
+        worker.work(burst=True)
+        # After work is finished, FailedJobRegistry should be empty
+        started_job_registry = StartedJobRegistry(queue=queue)
+        finished_job_registry = FinishedJobRegistry(queue=queue)
+        self.assertEqual(len(started_job_registry), 0)
+        self.assertEqual(len(finished_job_registry), 1)
+        self.assertEqual(len(queue.failed_job_registry), 0)
 
     def test_prepare_job_execution_inf_timeout(self):
         """Prepare job execution handles infinite job timeout"""
